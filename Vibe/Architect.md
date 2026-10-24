@@ -37,6 +37,7 @@ procurement/
 ├── manage.py
 ├── config/                  # settings, urls, wsgi
 ├── apps/
+│   ├── core/                # TimeStampedModel, DocumentSequence, exceptions
 │   ├── accounts/            # User (role), permission decorator
 │   ├── masterdata/          # Department, Item, Vendor
 │   ├── requisitions/        # PurchaseRequest, PRItem
@@ -103,7 +104,7 @@ erDiagram
 | Tabel | Kolom penting | Constraint |
 |---|---|---|
 | `user` | username, role, department_id, is_active | role dalam enum |
-| `department` | code, name, head_id | code unik |
+| `department` | code, name, is_active | code unik. Dept Head = user ber-role `DEPT_HEAD` pada departemen tsb |
 | `item` | code, name, uom, is_active | code unik |
 | `vendor` | code, name, contact, email, is_active | code unik |
 | `purchase_request` | number, requester_id, department_id, needed_date, reason, status, created_at | number unik, index status |
@@ -117,6 +118,7 @@ erDiagram
 | `po_item` | po_id, item_id, qty, unit_price | qty > 0 |
 | `goods_receipt` | number, po_id, delivery_note_no, received_date, received_by_id | number unik |
 | `gr_item` | gr_id, po_item_id, qty_received, condition, notes | qty_received > 0 |
+| `document_sequence` | key (PREFIX-YYYYMM), last_value | key unik; dikunci `select_for_update` |
 | `audit_log` | content_type, object_id, from_status, to_status, user_id, note, created_at | append-only, index objek |
 
 Keputusan desain:
@@ -130,14 +132,16 @@ Keputusan desain:
 Didefinisikan sebagai dict transisi di `services/state_machine.py`:
 ```python
 TRANSITIONS = {
-  "PR": {"DRAFT": {"SUBMITTED", "CANCELLED"},
-         "SUBMITTED": {"APPROVED", "REJECTED", "CANCELLED"},
-         "REJECTED": {"DRAFT"},
-         "APPROVED": {"IN_SOURCING", "CANCELLED"},
-         "IN_SOURCING": {"PO_ISSUED", "CANCELLED"},
-         "PO_ISSUED": {"PARTIALLY_RECEIVED", "COMPLETED"},
-         "PARTIALLY_RECEIVED": {"COMPLETED"}},
-  # RFQ, QUOTATION, PO didefinisikan serupa (lihat SRS bagian 4)
+    "PR": {
+        "DRAFT": {"SUBMITTED", "CANCELLED"},
+        "SUBMITTED": {"APPROVED", "REJECTED", "CANCELLED"},
+        "REJECTED": {"DRAFT"},
+        "APPROVED": {"IN_SOURCING", "CANCELLED"},
+        "IN_SOURCING": {"PO_ISSUED", "CANCELLED"},
+        "PO_ISSUED": {"PARTIALLY_RECEIVED", "COMPLETED"},
+        "PARTIALLY_RECEIVED": {"COMPLETED"},
+    },
+    # RFQ, QUOTATION, PO didefinisikan serupa (lihat SRS bagian 4)
 }
 ```
 `transition(obj, to_status, user, note)` memvalidasi, memperbarui status, menulis AuditLog, semuanya atomik.
@@ -158,10 +162,18 @@ Receiver -> GR (qty <= sisa) -> PO(PARTIALLY_RECEIVED | COMPLETED)
 - Timeout 20 detik, error ditangkap, fallback ke input manual.
 - API key dari `ANTHROPIC_API_KEY` (env), tidak pernah di-commit.
 
-## 9. Deployment
+## 9. Database: SQLite default, Supabase opsional
+- Default **SQLite** (zero-config) supaya penilai dapat langsung menjalankan repo.
+- PostgreSQL (termasuk **Supabase**) cukup dengan mengisi `DATABASE_URL` di `.env`.
+- Supabase dipakai **hanya sebagai PostgreSQL hosted**: tanpa Supabase Auth, RLS, atau client SDK; `service_role` key tidak pernah dipakai.
+- Schema **hanya** lahir dari migration Django (`python manage.py migrate`), tidak dibuat lewat dashboard Supabase.
+- Gunakan connection string pooler. Untuk transaction pooler (port 6543) set `DB_DISABLE_SERVER_SIDE_CURSORS=1`.
+- Kredensial tidak pernah di-commit (gate L010).
+
+## 10. Deployment
 `docker-compose.yml`: service `web` (gunicorn) + `db` (postgres:16). Tanpa Docker: `pip install -r requirements.txt`, `migrate`, `seed_data`, `runserver` (SQLite).
 
-## 10. Testing
+## 11. Testing
 - Unit: state machine (transisi valid dan invalid), numbering, perhitungan total.
 - Service: BR-01 sampai BR-06 (self-approval, over-receipt, dsb).
 - Smoke: alur end-to-end happy path dan skenario PR ditolak.

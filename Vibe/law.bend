@@ -63,7 +63,7 @@ fix_hint  = Data vendor hanya di masterdata.Vendor, penawaran diinput Procuremen
 name      = no-secrets-in-repo
 severity  = BLOCK
 rule      = API key, password, SECRET_KEY produksi tidak boleh ada di source.
-check     = grep -rEn "(sk-ant-[A-Za-z0-9_-]+|ANTHROPIC_API_KEY\s*=\s*['\"][^'\"]+|AKIA[0-9A-Z]{16}|BEGIN (RSA )?PRIVATE KEY)" . --exclude-dir=.git --exclude-dir=.venv --exclude=.env.example
+check     = grep -rEn "(sk-ant-[A-Za-z0-9_-]+|ANTHROPIC_API_KEY\s*=\s*['\"][^'\"]+|AKIA[0-9A-Z]{16}|service_role|postgres(ql)?://[^:@/ ]+:[^@ ]{3,}@[a-z0-9.-]+\.supabase\.(co|com)|BEGIN (RSA )?PRIVATE KEY)" . --exclude-dir=.git --exclude-dir=.venv --exclude=.env.example
 violates_if = ada hasil
 fix_hint  = Pindahkan ke environment variable, isi placeholder di .env.example.
 

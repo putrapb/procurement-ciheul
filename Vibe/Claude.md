@@ -1,4 +1,4 @@
-# Claude.md - Instruksi untuk Claude Code
+# CLAUDE.md - Instruksi untuk Claude Code
 
 ## Konteks Proyek
 Aplikasi **Procurement** (take-home test Software Engineer, Ciheul Technologies). Alur: PR -> approval -> RFQ -> quotation -> pilih vendor -> PO -> Goods Receipt. Deadline: **25 Okt 2026 23:59:59**.
@@ -21,7 +21,7 @@ Dokumen acuan (baca sebelum mengubah kode):
 8. Jika ragu antara cepat dan benar, pilih benar. Jika scope terlalu besar, potong AI/dashboard lebih dulu, bukan schema atau state machine.
 
 ## Tech Stack
-Python 3.12, Django 5, SQLite (default) / PostgreSQL (Docker), Bootstrap 5 + HTMX, pytest-django, ruff.
+Python 3.12, Django 5, SQLite (default) / PostgreSQL (Docker atau Supabase via `DATABASE_URL`, hanya sebagai DB), Bootstrap 5 + HTMX, pytest-django, ruff.
 
 ## Command
 ```bash

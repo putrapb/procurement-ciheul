@@ -1,0 +1,8 @@
+Django>=5.2,<5.3
+dj-database-url>=2.2
+python-dotenv>=1.0
+psycopg[binary]>=3.2
+gunicorn>=22.0
+pytest>=8.0
+pytest-django>=4.8
+ruff>=0.6

@@ -1,0 +1,10 @@
+.env
+db.sqlite3
+media/
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+staticfiles/
+LAW_VIOLATIONS.log
