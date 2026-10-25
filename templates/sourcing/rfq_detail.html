@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{{ rfq.number }} – Procurement{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'rfq_list' %}">RFQ</a></li>
+<li class="breadcrumb-item active">{{ rfq.number }}</li>
+{% endblock %}
+{% block content %}
+<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h1 class="h4 mb-1">{{ rfq.number }}</h1>
+    <p class="text-muted mb-0">PR: <a href="{% url 'pr_detail' rfq.pr.pk %}">{{ rfq.pr.number }}</a> · Batas: {{ rfq.due_date }}</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% include "partials/status_badge.html" with status=rfq.status %}
+    {% if rfq.status == 'DRAFT' and request.user.role == 'OFFICER' %}
+    <form method="post" action="{% url 'rfq_send' rfq.pk %}">{% csrf_token %}
+      <button class="btn btn-sm btn-primary">
+        <i class="bi bi-send me-1"></i>Kirim ke Vendor
+      </button>
+    </form>
+    {% endif %}
+    {% if rfq.status == 'SENT' and request.user.role == 'OFFICER' %}
+    <form method="post" action="{% url 'rfq_close' rfq.pk %}">{% csrf_token %}
+      <button class="btn btn-sm btn-outline-secondary" onclick="return confirm('Tutup RFQ ini?')">
+        <i class="bi bi-lock me-1"></i>Tutup RFQ
+      </button>
+    </form>
+    {% endif %}
+    {% if rfq.status == 'SENT' or rfq.status == 'CLOSED' %}
+      {% if request.user.role == 'OFFICER' or request.user.role == 'MANAGER' %}
+      <a href="{% url 'quotation_compare' rfq.pk %}" class="btn btn-sm btn-info text-white">
+        <i class="bi bi-table me-1"></i>Bandingkan Penawaran
+      </a>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">Vendor & Penawaran</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Vendor</th><th>Status Penawaran</th><th>Lead Time</th><th>Valid Hingga</th><th></th></tr></thead>
+      <tbody>
+        {% for rv in rfq_vendors %}
+        <tr>
+          <td>{{ rv.vendor }}</td>
+          <td>
+            {% if rv.quotation %}
+              {% include "partials/status_badge.html" with status=rv.quotation.status %}
+            {% else %}
+              <span class="text-muted">Belum diinput</span>
+            {% endif %}
+          </td>
+          <td>{% if rv.quotation %}{{ rv.quotation.lead_time_days }} hari{% else %}–{% endif %}</td>
+          <td>{% if rv.quotation %}{{ rv.quotation.valid_until|default:"–" }}{% else %}–{% endif %}</td>
+          <td>
+            {% if request.user.role == 'OFFICER' and rfq.status != 'AWARDED' %}
+            <a href="{% url 'quotation_input' rfq.pk rv.vendor.pk %}" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-pencil me-1"></i>{% if rv.quotation %}Edit{% else %}Input{% endif %} Penawaran
+            </a>
+            {% endif %}
+            {% if rv.quotation and rv.quotation.status == 'SUBMITTED' and request.user.role == 'OFFICER' and not has_selected %}
+            <a href="{% url 'quotation_select' rv.quotation.pk %}" class="btn btn-sm btn-warning">
+              Pilih Vendor
+            </a>
+            {% endif %}
+            {% if rv.quotation and rv.quotation.status == 'SELECTED' and request.user.role == 'MANAGER' %}
+            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveQModal{{ rv.quotation.pk }}">Setujui</button>
+            <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectQModal{{ rv.quotation.pk }}">Tolak</button>
+            {% endif %}
+            {% if rv.quotation and rv.quotation.status == 'APPROVED' and request.user.role == 'OFFICER' %}
+            <a href="{% url 'po_create' rv.quotation.pk %}" class="btn btn-sm btn-primary">Terbitkan PO</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Approval Modals for Manager -->
+{% for rv in rfq_vendors %}
+  {% if rv.quotation %}
+  <div class="modal fade" id="approveQModal{{ rv.quotation.pk }}" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+      <form method="post" action="{% url 'quotation_approve' rv.quotation.pk %}">
+        {% csrf_token %}
+        <div class="modal-header"><h5 class="modal-title">Setujui Pemilihan Vendor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><textarea name="note" class="form-control" placeholder="Catatan…" rows="3"></textarea></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success">Setujui</button>
+        </div>
+      </form>
+    </div></div>
+  </div>
+  <div class="modal fade" id="rejectQModal{{ rv.quotation.pk }}" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+      <form method="post" action="{% url 'quotation_reject' rv.quotation.pk %}">
+        {% csrf_token %}
+        <div class="modal-header"><h5 class="modal-title">Tolak Pemilihan Vendor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body"><textarea name="reason" class="form-control" placeholder="Alasan penolakan…" rows="3" required></textarea></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-danger">Tolak</button>
+        </div>
+      </form>
+    </div></div>
+  </div>
+  {% endif %}
+{% endfor %}
+{% endblock %}

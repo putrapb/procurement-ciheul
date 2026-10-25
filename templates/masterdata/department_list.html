@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Departemen – Procurement{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Departemen</h1>
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table mb-0">
+      <thead><tr><th>Kode</th><th>Nama</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for d in departments %}
+        <tr>
+          <td>{{ d.code }}</td>
+          <td>{{ d.name }}</td>
+          <td>{% if d.is_active %}<span class="badge bg-success">Aktif</span>{% else %}<span class="badge bg-secondary">Nonaktif</span>{% endif %}</td>
+        </tr>
+        {% empty %}<tr><td colspan="3" class="text-muted text-center py-4">Belum ada data.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="mt-3"><a href="/admin/masterdata/department/" class="btn btn-primary">Kelola via Admin</a></div>
+{% endblock %}

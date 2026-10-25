@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}{{ pr.number }} – Procurement{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'pr_list' %}">Purchase Request</a></li>
+<li class="breadcrumb-item active">{{ pr.number }}</li>
+{% endblock %}
+{% block content %}
+<!-- Header -->
+<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h1 class="h4 mb-1">{{ pr.number }}</h1>
+    <p class="text-muted mb-0">{{ pr.requester }} · {{ pr.department }} · Dibuat {{ pr.created_at|date:"d M Y H:i" }}</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% include "partials/status_badge.html" with status=pr.status %}
+
+    {% if can_submit %}
+    <form method="post" action="{% url 'pr_submit' pr.pk %}">{% csrf_token %}
+      <button class="btn btn-sm btn-warning" onclick="return confirm('Ajukan PR ini?')">
+        <i class="bi bi-send me-1"></i>Ajukan
+      </button>
+    </form>
+    {% endif %}
+
+    {% if pr.status == 'DRAFT' and request.user == pr.requester %}
+    <a href="{% url 'pr_edit' pr.pk %}" class="btn btn-sm btn-outline-secondary">
+      <i class="bi bi-pencil me-1"></i>Edit
+    </a>
+    <a href="{% url 'pr_delete' pr.pk %}" class="btn btn-sm btn-outline-danger">
+      <i class="bi bi-trash me-1"></i>Hapus
+    </a>
+    {% endif %}
+
+    {% if can_revise %}
+    <form method="post" action="{% url 'pr_revise' pr.pk %}">{% csrf_token %}
+      <button class="btn btn-sm btn-outline-warning" onclick="return confirm('Kembalikan ke Draft?')">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Revisi
+      </button>
+    </form>
+    {% endif %}
+
+    {% if can_cancel %}
+    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+      <i class="bi bi-x-circle me-1"></i>Batalkan
+    </button>
+    {% endif %}
+
+    {% if can_approve_reject %}
+    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal">
+      <i class="bi bi-check-lg me-1"></i>Setujui
+    </button>
+    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+      <i class="bi bi-x-lg me-1"></i>Tolak
+    </button>
+    {% endif %}
+
+    {% if pr.status == 'APPROVED' and request.user.role == 'OFFICER' %}
+    <a href="{% url 'rfq_create' pr.pk %}" class="btn btn-sm btn-primary">
+      <i class="bi bi-send me-1"></i>Buat RFQ
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3" id="prTabs">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-items">Item</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-approvals">Approval</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-history">Riwayat</a></li>
+</ul>
+<div class="tab-content">
+  <!-- Items tab -->
+  <div class="tab-pane fade show active" id="tab-items">
+    <div class="card">
+      <div class="card-body">
+        <p class="mb-2 text-muted"><strong>Alasan:</strong> {{ pr.reason }}</p>
+        <p class="mb-3 text-muted"><strong>Dibutuhkan:</strong> {{ pr.needed_date }}</p>
+        <table class="table table-hover">
+          <thead><tr><th>Kode Item</th><th>Nama</th><th>Satuan</th><th class="text-end">Qty</th><th>Catatan</th></tr></thead>
+          <tbody>
+            {% for pi in pr.items.all %}
+            <tr>
+              <td>{{ pi.item.code }}</td>
+              <td>{{ pi.item.name }}</td>
+              <td>{{ pi.item.uom }}</td>
+              <td class="text-end">{{ pi.qty }}</td>
+              <td>{{ pi.notes }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Approvals tab -->
+  <div class="tab-pane fade" id="tab-approvals">
+    <div class="card">
+      <div class="card-body">
+        <table class="table">
+          <thead><tr><th>Level</th><th>Role</th><th>Approver</th><th>Status</th><th>Catatan</th><th>Waktu</th></tr></thead>
+          <tbody>
+            {% for a in approvals %}
+            <tr>
+              <td>{{ a.level }}</td>
+              <td>{{ a.required_role }}</td>
+              <td>{{ a.approver|default:"–" }}</td>
+              <td>{% include "partials/status_badge.html" with status=a.status %}</td>
+              <td>{{ a.notes|default:"–" }}</td>
+              <td>{{ a.decided_at|date:"d M Y H:i"|default:"–" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted">Belum ada approval.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- History tab -->
+  <div class="tab-pane fade" id="tab-history">
+    <div class="card">
+      <div class="card-body">
+        <table class="table">
+          <thead><tr><th>Waktu</th><th>Dari</th><th>Ke</th><th>Oleh</th><th>Catatan</th></tr></thead>
+          <tbody>
+            {% for log in audit_logs %}
+            <tr>
+              <td>{{ log.created_at|date:"d M Y H:i" }}</td>
+              <td><code>{{ log.from_status|default:"–" }}</code></td>
+              <td><code>{{ log.to_status }}</code></td>
+              <td>{{ log.user|default:"–" }}</td>
+              <td>{{ log.note|default:"–" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted">Belum ada riwayat.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'pr_approve' pr.pk %}">
+        {% csrf_token %}
+        <div class="modal-header"><h5 class="modal-title">Setujui PR</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <label class="form-label">Catatan (opsional)</label>
+          <textarea name="note" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-success">Setujui</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'pr_reject' pr.pk %}">
+        {% csrf_token %}
+        <div class="modal-header"><h5 class="modal-title">Tolak PR</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <label class="form-label">Alasan penolakan <span class="text-danger">*</span></label>
+          <textarea name="reason" class="form-control" rows="3" required></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="submit" class="btn btn-danger">Tolak</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="{% url 'pr_cancel' pr.pk %}">
+        {% csrf_token %}
+        <div class="modal-header"><h5 class="modal-title">Batalkan PR</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+          <p>Apakah Anda yakin ingin membatalkan PR <strong>{{ pr.number }}</strong>?</p>
+          <label class="form-label">Alasan (opsional)</label>
+          <textarea name="reason" class="form-control" rows="2"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kembali</button>
+          <button type="submit" class="btn btn-danger">Ya, Batalkan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

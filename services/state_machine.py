@@ -6,9 +6,14 @@ dalam transaksi yang sama (gate L022).
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
+from django.utils import timezone
 
 from apps.audit.models import AuditLog
 from apps.core.exceptions import InvalidTransition
+
+APPROVAL_TRANSITIONS: dict[str, set[str]] = {
+    "PENDING": {"APPROVED", "REJECTED"},
+}
 
 TRANSITIONS: dict[str, dict[str, set[str]]] = {
     "PurchaseRequest": {
@@ -67,3 +72,21 @@ def transition(obj, to_status: str, user, note: str = "") -> None:
             user=user,
             note=note,
         )
+
+
+def set_approval_decision(approval, to_status: str, approver, note: str = "") -> None:
+    """
+    Catat keputusan Approval (PENDING → APPROVED/REJECTED).
+
+    Satu-satunya tempat `Approval.status` boleh diubah (gate L020). Approval bukan
+    dokumen transaksional, jadi keputusan ini tidak menulis AuditLog; perubahan
+    status dokumen yang memicunya tetap dicatat oleh transition().
+    """
+    if to_status not in APPROVAL_TRANSITIONS.get(approval.status, set()):
+        raise InvalidTransition(f"Approval: {approval.status} -> {to_status} tidak diizinkan")
+
+    approval.status = to_status
+    approval.approver = approver
+    approval.notes = note
+    approval.decided_at = timezone.now()
+    approval.save(update_fields=["status", "approver", "notes", "decided_at"])

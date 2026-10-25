@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ gr.number }} – Procurement{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'gr_list' %}">Goods Receipt</a></li>
+<li class="breadcrumb-item active">{{ gr.number }}</li>
+{% endblock %}
+{% block content %}
+<h1 class="h4 mb-1">{{ gr.number }}</h1>
+<p class="text-muted mb-4">PO: <a href="{% url 'po_detail' gr.po.pk %}">{{ gr.po.number }}</a> · Vendor: {{ gr.po.vendor }} · Diterima: {{ gr.received_date }}</p>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4"><div class="card p-3">
+    <div class="text-muted small">No. Surat Jalan</div>
+    <div class="fw-bold">{{ gr.delivery_note_no }}</div>
+  </div></div>
+  <div class="col-md-4"><div class="card p-3">
+    <div class="text-muted small">Diterima oleh</div>
+    <div class="fw-bold">{{ gr.received_by }}</div>
+  </div></div>
+  <div class="col-md-4"><div class="card p-3">
+    <div class="text-muted small">Catatan</div>
+    <div>{{ gr.notes|default:"–" }}</div>
+  </div></div>
+</div>
+
+<div class="card">
+  <div class="card-header">Item yang Diterima</div>
+  <div class="card-body p-0">
+    <table class="table mb-0">
+      <thead><tr><th>Kode Item</th><th>Nama</th><th class="text-end">Qty Diterima</th><th>Kondisi</th><th>Catatan</th></tr></thead>
+      <tbody>
+        {% for gi in gr_items %}
+        <tr>
+          <td>{{ gi.po_item.item.code }}</td>
+          <td>{{ gi.po_item.item.name }}</td>
+          <td class="text-end">{{ gi.qty_received }}</td>
+          <td>
+            {% if gi.condition == 'OK' %}
+              <span class="badge bg-success">Baik</span>
+            {% else %}
+              <span class="badge bg-danger">Rusak</span>
+            {% endif %}
+          </td>
+          <td>{{ gi.notes|default:"–" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

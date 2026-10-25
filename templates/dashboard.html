@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Dashboard – Procurement Ciheul{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+  <div>
+    <h1 class="h4 mb-1">Selamat datang, {{ request.user.get_full_name|default:request.user.username }}</h1>
+    <p class="text-muted mb-0">Role: <strong>{{ request.user.get_role_display }}</strong></p>
+  </div>
+</div>
+
+<!-- ── REQUESTER ─────────────────────────────────────────────── -->
+{% if role == 'REQUESTER' %}
+<div class="row g-3 mb-4">
+  {% for status, label in status_choices %}
+  <div class="col-6 col-md-3">
+    <div class="card text-center p-3">
+      <div class="fs-2 fw-bold">{{ counts|get_item:status|default:0 }}</div>
+      <div class="small text-muted">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-file-earmark-text me-2"></i>PR Terbaru Saya</span>
+    <a href="{% url 'pr_create' %}" class="btn btn-sm btn-primary">
+      <i class="bi bi-plus me-1"></i>Buat PR
+    </a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Nomor</th><th>Departemen</th><th>Status</th><th>Dibutuhkan</th><th></th></tr></thead>
+      <tbody>
+        {% for pr in my_prs %}
+        <tr>
+          <td><a href="{% url 'pr_detail' pr.pk %}">{{ pr.number }}</a></td>
+          <td>{{ pr.department }}</td>
+          <td>{% include "partials/status_badge.html" with status=pr.status %}</td>
+          <td>{{ pr.needed_date }}</td>
+          <td><a href="{% url 'pr_detail' pr.pk %}" class="btn btn-sm btn-outline-primary">Detail</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">Belum ada PR. <a href="{% url 'pr_create' %}">Buat sekarang</a></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── DEPT HEAD ─────────────────────────────────────────────── -->
+{% if role == 'DEPT_HEAD' %}
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-check2-square me-2"></i>Antrean Approval PR</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Nomor PR</th><th>Requester</th><th>Departemen</th><th>Diajukan</th><th></th></tr></thead>
+      <tbody>
+        {% for approval in pending_approvals %}
+        {% with pr=approval.target %}
+        <tr>
+          <td><a href="{% url 'pr_detail' pr.pk %}">{{ pr.number }}</a></td>
+          <td>{{ pr.requester }}</td>
+          <td>{{ pr.department }}</td>
+          <td>{{ approval.requested_at|date:"d M Y" }}</td>
+          <td>
+            <a href="{% url 'pr_detail' pr.pk %}" class="btn btn-sm btn-warning">Review</a>
+          </td>
+        </tr>
+        {% endwith %}
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">Tidak ada antrean approval.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── OFFICER ────────────────────────────────────────────────── -->
+{% if role == 'OFFICER' %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="fs-2 fw-bold text-primary">{{ prs_to_source|length }}</div>
+      <div class="small text-muted">PR Siap Sourcing</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="fs-2 fw-bold text-info">{{ rfqs|length }}</div>
+      <div class="small text-muted">RFQ Aktif</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="fs-2 fw-bold text-success">{{ pos_to_send|length }}</div>
+      <div class="small text-muted">PO Siap Dikirim</div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-clipboard-check me-2"></i>PR Siap Sourcing</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Nomor PR</th><th>Departemen</th><th>Tgl Dibutuhkan</th><th></th></tr></thead>
+      <tbody>
+        {% for pr in prs_to_source %}
+        <tr>
+          <td><a href="{% url 'pr_detail' pr.pk %}">{{ pr.number }}</a></td>
+          <td>{{ pr.department }}</td>
+          <td>{{ pr.needed_date }}</td>
+          <td><a href="{% url 'rfq_create' pr.pk %}" class="btn btn-sm btn-primary">Buat RFQ</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Tidak ada PR yang menunggu sourcing.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── MANAGER ────────────────────────────────────────────────── -->
+{% if role == 'MANAGER' %}
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-check2-circle me-2"></i>Antrean Approval</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Tipe</th><th>Objek</th><th>Diminta</th><th></th></tr></thead>
+      <tbody>
+        {% for approval in pending_approvals %}
+        <tr>
+          <td><span class="badge bg-secondary">{{ approval.content_type.model|upper }}</span></td>
+          <td>{{ approval.target }}</td>
+          <td>{{ approval.requested_at|date:"d M Y H:i" }}</td>
+          <td>
+            {% if approval.content_type.model == 'purchaseorder' %}
+            <a href="{% url 'po_detail' approval.object_id %}" class="btn btn-sm btn-warning">Review PO</a>
+            {% elif approval.content_type.model == 'quotation' %}
+            <a href="{% url 'rfq_detail' approval.target.rfq_vendor.rfq.pk %}" class="btn btn-sm btn-warning">Review Quotation</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Tidak ada antrean approval.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── WAREHOUSE ───────────────────────────────────────────────── -->
+{% if role == 'WAREHOUSE' %}
+<div class="card mb-4">
+  <div class="card-header"><i class="bi bi-box-arrow-in-down me-2"></i>PO Siap Diterima</div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead><tr><th>Nomor PO</th><th>Vendor</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for po in pos_ready %}
+        <tr>
+          <td><a href="{% url 'po_detail' po.pk %}">{{ po.number }}</a></td>
+          <td>{{ po.vendor }}</td>
+          <td>{% include "partials/status_badge.html" with status=po.status %}</td>
+          <td><a href="{% url 'gr_create' po.pk %}" class="btn btn-sm btn-success">Catat GR</a></td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Tidak ada PO yang menunggu penerimaan.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── ADMIN ───────────────────────────────────────────────────── -->
+{% if role == 'ADMIN' %}
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="fs-2 fw-bold">{{ total_prs }}</div>
+      <div class="small text-muted">Total Purchase Request</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="fs-2 fw-bold">{{ total_vendors }}</div>
+      <div class="small text-muted">Total Vendor</div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card p-3 text-center">
+      <div class="fs-2 fw-bold">{{ total_items }}</div>
+      <div class="small text-muted">Total Item</div>
+    </div>
+  </div>
+</div>
+<div class="d-flex gap-2">
+  <a href="/admin/" class="btn btn-primary"><i class="bi bi-gear me-1"></i>Admin Panel</a>
+  <a href="{% url 'department_list' %}" class="btn btn-outline-secondary">Departemen</a>
+  <a href="{% url 'item_list' %}" class="btn btn-outline-secondary">Item</a>
+  <a href="{% url 'vendor_list' %}" class="btn btn-outline-secondary">Vendor</a>
+</div>
+{% endif %}
+{% endblock %}

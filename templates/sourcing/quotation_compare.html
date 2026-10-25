@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Perbandingan Penawaran – {{ rfq.number }}{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4"><i class="bi bi-table me-2 text-primary"></i>Perbandingan Penawaran – {{ rfq.number }}</h1>
+
+<div class="card">
+  <div class="card-body table-responsive">
+    <table class="table table-bordered text-center">
+      <thead class="table-light">
+        <tr>
+          <th class="text-start">Item</th>
+          <th>Qty</th>
+          {% for vendor in vendors %}
+          <th>{{ vendor.name }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td class="text-start">{{ row.pr_item.item.name }}</td>
+          <td>{{ row.pr_item.qty }} {{ row.pr_item.item.uom }}</td>
+          {% for vendor in vendors %}
+          {% with price=row.prices|get_item:vendor.pk %}
+          <td {% if price is not None and price == row.lowest %}class="highlight-lowest"{% endif %}>
+            {% if price or price == 0 %}Rp {{ price|floatformat:0 }}{% else %}<span class="text-muted">–</span>{% endif %}
+          </td>
+          {% endwith %}
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-secondary fw-bold">
+        <tr>
+          <td class="text-start">Total</td>
+          <td></td>
+          {% for vendor in vendors %}
+          {% with total=totals|get_item:vendor.pk %}
+          <td {% if total and total == lowest_total %}class="highlight-lowest"{% endif %}>
+            {% if total %}Rp {{ total|floatformat:0 }}{% else %}<span class="text-muted">–</span>{% endif %}
+            {% if total and total == lowest_total %}<br><small class="text-success">✓ Terendah</small>{% endif %}
+          </td>
+          {% endwith %}
+          {% endfor %}
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+{% if request.user.role == 'OFFICER' %}
+<div class="mt-3">
+  <h6 class="fw-bold">Pilih Vendor</h6>
+  {% for vendor in vendors %}
+  {% with q=quotations_by_vendor|get_item:vendor.pk %}
+  {% if q and q.status == 'SUBMITTED' %}
+  <a href="{% url 'quotation_select' q.pk %}" class="btn btn-warning me-2">
+    Pilih {{ vendor.name }}
+  </a>
+  {% endif %}
+  {% endwith %}
+  {% endfor %}
+</div>
+{% endif %}
+<a href="{% url 'rfq_detail' rfq.pk %}" class="btn btn-outline-secondary mt-3">Kembali</a>
+{% endblock %}

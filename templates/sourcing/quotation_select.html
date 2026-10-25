@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Pilih Vendor – Procurement{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Pilih Vendor – {{ quotation.rfq_vendor.vendor }}</h1>
+<div class="card" style="max-width:520px;">
+  <div class="card-body">
+    <p class="text-muted">Quotation dari <strong>{{ quotation.rfq_vendor.vendor }}</strong> untuk RFQ <strong>{{ rfq.number }}</strong>.</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Justifikasi Pemilihan</label>
+        <textarea name="justification" class="form-control" rows="4"
+          placeholder="Wajib diisi jika bukan harga terendah…"></textarea>
+        <div class="form-text">Wajib diisi jika vendor yang dipilih bukan penawar dengan total terendah.</div>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-warning"><i class="bi bi-check-circle me-1"></i>Pilih Vendor Ini</button>
+        <a href="{% url 'rfq_detail' rfq.pk %}" class="btn btn-outline-secondary">Batal</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

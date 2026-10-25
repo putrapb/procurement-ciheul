@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Procurement Ciheul{% endblock %}</title>
+  <meta name="description" content="Sistem Pengadaan Barang - Ciheul Technologies">
+  <!-- Bootstrap 5 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <!-- Bootstrap Icons -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+  <style>
+    :root {
+      --sidebar-width: 230px;
+      --primary: #0d6efd;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #f5f7fb;
+    }
+
+    #sidebar {
+      width: var(--sidebar-width);
+      min-height: 100vh;
+      background: #1a1d2e;
+      color: #c9cfe4;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 100;
+      transition: width .2s;
+    }
+
+    #sidebar .sidebar-brand {
+      padding: 1.25rem 1rem;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      border-bottom: 1px solid rgba(255, 255, 255, .08);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    #sidebar .nav-link {
+      color: #c9cfe4;
+      border-radius: 6px;
+      padding: .45rem .9rem;
+      margin: .1rem .5rem;
+      font-size: .875rem;
+    }
+
+    #sidebar .nav-link:hover,
+    #sidebar .nav-link.active {
+      background: rgba(255, 255, 255, .1);
+      color: #fff;
+    }
+
+    #sidebar .nav-section {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #6c7293;
+      padding: .8rem 1rem .2rem;
+    }
+
+    #main {
+      margin-left: var(--sidebar-width);
+    }
+
+    #topbar {
+      background: #fff;
+      border-bottom: 1px solid #e8ecf0;
+      padding: .6rem 1.5rem;
+    }
+
+    .badge-status {
+      font-size: .75rem;
+    }
+
+    /* Status badge colours */
+    .badge-DRAFT {
+      background: #6c757d;
+    }
+
+    .badge-SUBMITTED,
+    .badge-PENDING_APPROVAL {
+      background: #ffc107;
+      color: #000;
+    }
+
+    .badge-APPROVED,
+    .badge-SELECTED {
+      background: #0dcaf0;
+      color: #000;
+    }
+
+    .badge-IN_SOURCING,
+    .badge-SENT {
+      background: #0d6efd;
+    }
+
+    .badge-PARTIALLY_RECEIVED {
+      background: transparent;
+      border: 2px solid #ffc107;
+      color: #ffc107;
+    }
+
+    .badge-COMPLETED {
+      background: #198754;
+    }
+
+    .badge-REJECTED,
+    .badge-CANCELLED {
+      background: #dc3545;
+    }
+
+    .badge-AWARDED {
+      background: #6f42c1;
+    }
+
+    .badge-CLOSED {
+      background: #343a40;
+    }
+
+    /* Card subtle shadow */
+    .card {
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .07);
+      border: none;
+    }
+
+    .card-header {
+      background: #fff;
+      border-bottom: 1px solid #e8ecf0;
+      font-weight: 600;
+    }
+
+    .table thead th {
+      font-size: .8rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #6c757d;
+      border-bottom: 2px solid #e8ecf0;
+    }
+
+    .highlight-lowest {
+      background: #d1e7dd !important;
+    }
+
+    @media (max-width: 767px) {
+      #sidebar {
+        width: 0;
+        overflow: hidden;
+      }
+
+      #main {
+        margin-left: 0;
+      }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+
+  {% if user.is_authenticated %}
+  <!-- ── Sidebar ───────────────────────────────────────────────── -->
+  <nav id="sidebar" class="d-flex flex-column">
+    <div class="sidebar-brand">
+      <i class="bi bi-box-seam me-2"></i>Procurement
+    </div>
+    <ul class="nav flex-column mt-2 flex-grow-1">
+      <li><a href="{% url 'dashboard' %}" class="nav-link {% block nav_dashboard %}{% endblock %}">
+          <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </a></li>
+
+      {% if user.role == 'REQUESTER' %}
+      <li class="nav-section">Purchase Request</li>
+      <li><a href="{% url 'pr_list' %}" class="nav-link">
+          <i class="bi bi-file-earmark-text me-2"></i>Daftar PR
+        </a></li>
+      <li><a href="{% url 'pr_create' %}" class="nav-link">
+          <i class="bi bi-plus-circle me-2"></i>Buat PR
+        </a></li>
+      {% endif %}
+
+      {% if user.role == 'DEPT_HEAD' %}
+      <li class="nav-section">Approval</li>
+      <li><a href="{% url 'pr_list' %}" class="nav-link">
+          <i class="bi bi-check2-square me-2"></i>Antrean Approval PR
+        </a></li>
+      {% endif %}
+
+      {% if user.role == 'OFFICER' %}
+      <li class="nav-section">Sourcing</li>
+      <li><a href="{% url 'pr_list' %}?status=APPROVED" class="nav-link">
+          <i class="bi bi-clipboard-check me-2"></i>PR Siap Sourcing
+        </a></li>
+      <li><a href="{% url 'rfq_list' %}" class="nav-link">
+          <i class="bi bi-send me-2"></i>Daftar RFQ
+        </a></li>
+      <li class="nav-section">Order</li>
+      <li><a href="{% url 'po_list' %}" class="nav-link">
+          <i class="bi bi-receipt me-2"></i>Daftar PO
+        </a></li>
+      {% endif %}
+
+      {% if user.role == 'MANAGER' %}
+      <li class="nav-section">Approval</li>
+      <li><a href="{% url 'po_list' %}?status=PENDING_APPROVAL" class="nav-link">
+          <i class="bi bi-check2-circle me-2"></i>Antrean Approval
+        </a></li>
+      <li><a href="{% url 'rfq_list' %}" class="nav-link">
+          <i class="bi bi-eye me-2"></i>Lihat RFQ
+        </a></li>
+      {% endif %}
+
+      {% if user.role == 'WAREHOUSE' %}
+      <li class="nav-section">Penerimaan</li>
+      <li><a href="{% url 'gr_list' %}" class="nav-link">
+          <i class="bi bi-box-arrow-in-down me-2"></i>Goods Receipt
+        </a></li>
+      {% endif %}
+
+      {% if user.role == 'ADMIN' %}
+      <li class="nav-section">Master Data</li>
+      <li><a href="{% url 'department_list' %}" class="nav-link">
+          <i class="bi bi-building me-2"></i>Departemen
+        </a></li>
+      <li><a href="{% url 'item_list' %}" class="nav-link">
+          <i class="bi bi-tags me-2"></i>Item
+        </a></li>
+      <li><a href="{% url 'vendor_list' %}" class="nav-link">
+          <i class="bi bi-people me-2"></i>Vendor
+        </a></li>
+      <li class="nav-section">Sistem</li>
+      <li><a href="/admin/" class="nav-link">
+          <i class="bi bi-gear me-2"></i>Admin Panel
+        </a></li>
+      {% endif %}
+    </ul>
+    <div class="p-3 border-top border-secondary">
+      <small class="text-secondary d-block">{{ user.get_full_name|default:user.username }}</small>
+      <small class="badge bg-secondary">{{ user.get_role_display }}</small>
+    </div>
+  </nav>
+
+  <!-- ── Main ─────────────────────────────────────────────────── -->
+  <div id="main">
+    <!-- Topbar -->
+    <div id="topbar" class="d-flex align-items-center justify-content-between">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
+          {% block breadcrumb %}<li class="breadcrumb-item active">Dashboard</li>{% endblock %}
+        </ol>
+      </nav>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small"><i class="bi bi-person-circle me-1"></i>{{ user.username }}</span>
+        <form method="post" action="{% url 'logout' %}" class="m-0">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-secondary" type="submit">
+            <i class="bi bi-box-arrow-right me-1"></i>Logout
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="px-4 pt-3">
+      {% for msg in messages %}
+      <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show" role="alert">
+        {{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Page content -->
+    <div class="p-4">
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+  {% else %}
+  <!-- Unauthenticated -->
+  <div class="container py-4">
+    {% if messages %}
+    <div class="mt-3">
+      {% for msg in messages %}
+      <div class="alert alert-{{ msg.tags|default:'info' }} alert-dismissible fade show">
+        {{ msg }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+
+</html>

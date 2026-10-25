@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Hapus PR – Procurement{% endblock %}
+{% block content %}
+<div class="card" style="max-width:500px;margin:auto;">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-exclamation-triangle text-danger fs-1"></i>
+    <h2 class="h5 mt-3">Hapus {{ pr.number }}?</h2>
+    <p class="text-muted">Tindakan ini tidak dapat dibatalkan.</p>
+    <form method="post" class="d-flex gap-2 justify-content-center">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-danger">Ya, Hapus</button>
+      <a href="{% url 'pr_detail' pr.pk %}" class="btn btn-outline-secondary">Batal</a>
+    </form>
+  </div>
+</div>
+{% endblock %}

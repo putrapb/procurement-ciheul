@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Antrean Approval – Procurement{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Antrean Approval</h1>
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table mb-0">
+      <thead><tr><th>Tipe Dokumen</th><th>Objek</th><th>Diminta</th><th></th></tr></thead>
+      <tbody>
+        {% for approval in pending %}
+        <tr>
+          <td><span class="badge bg-secondary">{{ approval.content_type.model|upper }}</span></td>
+          <td>{{ approval.target }}</td>
+          <td>{{ approval.requested_at|date:"d M Y H:i" }}</td>
+          <td>
+            {% if approval.content_type.model == 'purchaserequest' %}
+            <a href="{% url 'pr_detail' approval.object_id %}" class="btn btn-sm btn-warning">Review PR</a>
+            {% elif approval.content_type.model == 'purchaseorder' %}
+            <a href="{% url 'po_detail' approval.object_id %}" class="btn btn-sm btn-warning">Review PO</a>
+            {% elif approval.content_type.model == 'quotation' %}
+            <a href="{% url 'rfq_detail' approval.target.rfq_vendor.rfq.pk %}" class="btn btn-sm btn-warning">Review Quotation</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4">Tidak ada antrean approval.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

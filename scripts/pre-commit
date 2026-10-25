@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+"""
+pre-commit hook: jalankan law_checks.py sebelum setiap commit.
+Jika ada gate BLOCK yang terpicu, commit dibatalkan.
+
+Cara install (sekali saja):
+  python scripts/install_hooks.py
+  atau secara manual:
+  copy scripts\\pre-commit .git\\hooks\\pre-commit
+  (pastikan file executable di Unix: chmod +x .git/hooks/pre-commit)
+"""
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+law_checks = ROOT / "scripts" / "law_checks.py"
+
+result = subprocess.run(
+    [sys.executable, str(law_checks)],
+    cwd=str(ROOT),
+)
+sys.exit(result.returncode)

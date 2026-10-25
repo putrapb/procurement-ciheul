@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}{{ po.number }} – Procurement{% endblock %}
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'po_list' %}">Purchase Order</a></li>
+<li class="breadcrumb-item active">{{ po.number }}</li>
+{% endblock %}
+{% block content %}
+<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h1 class="h4 mb-1">{{ po.number }}</h1>
+    <p class="text-muted mb-0">Vendor: <strong>{{ po.vendor }}</strong> · Diterbitkan: {{ po.created_at|date:"d M Y" }}</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    {% include "partials/status_badge.html" with status=po.status %}
+
+    {% if po.status == 'PENDING_APPROVAL' and request.user.role == 'MANAGER' %}
+    <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#approveModal">
+      <i class="bi bi-check-lg me-1"></i>Setujui
+    </button>
+    <button class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal">
+      <i class="bi bi-x-lg me-1"></i>Tolak
+    </button>
+    {% endif %}
+
+    {% if po.status == 'APPROVED' and request.user.role == 'OFFICER' %}
+    <form method="post" action="{% url 'po_send' po.pk %}">{% csrf_token %}
+      <button class="btn btn-sm btn-primary" onclick="return confirm('Kirim PO ke vendor?')">
+        <i class="bi bi-send me-1"></i>Kirim ke Vendor
+      </button>
+    </form>
+    {% endif %}
+
+    {% if po.status == 'REJECTED' and request.user.role == 'OFFICER' %}
+    <button class="btn btn-sm btn-warning" data-bs-toggle="modal" data-bs-target="#resubmitModal">
+      <i class="bi bi-arrow-clockwise me-1"></i>Ajukan Ulang
+    </button>
+    {% endif %}
+
+    {% if request.user.role == 'OFFICER' or request.user.role == 'MANAGER' or request.user.role == 'ADMIN' %}
+    <a href="{% url 'po_print' po.pk %}" class="btn btn-sm btn-outline-secondary" target="_blank">
+      <i class="bi bi-printer me-1"></i>Cetak
+    </a>
+    {% endif %}
+
+    {% if po.status == 'SENT' or po.status == 'PARTIALLY_RECEIVED' %}
+      {% if request.user.role == 'WAREHOUSE' %}
+      <a href="{% url 'gr_create' po.pk %}" class="btn btn-sm btn-success">
+        <i class="bi bi-box-arrow-in-down me-1"></i>Catat Penerimaan
+      </a>
+      {% endif %}
+    {% endif %}
+
+    {% if can_cancel %}
+    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cancelModal">
+      <i class="bi bi-x-circle me-1"></i>Batalkan PO
+    </button>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Info card -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted small mb-1">Total PO</div>
+      <div class="fs-4 fw-bold">Rp {{ po.total_amount|floatformat:0 }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted small mb-1">Diterbitkan oleh</div>
+      <div class="fw-semibold">{{ po.issued_by }}</div>
+    </div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100"><div class="card-body">
+      <div class="text-muted small mb-1">Quotation</div>
+      <div class="fw-semibold">{{ po.quotation }}</div>
+    </div></div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-items">Item PO</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-approvals">Approval</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-history">Riwayat</a></li>
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-receipts">Penerimaan</a></li>
+</ul>
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="tab-items">
+    <div class="card"><div class="card-body p-0">
+      <table class="table mb-0">
+        <thead><tr><th>Kode Item</th><th>Nama</th><th class="text-end">Qty</th><th class="text-end">Harga Satuan</th><th class="text-end">Subtotal</th></tr></thead>
+        <tbody>
+          {% for pi in po.items.all %}
+          <tr>
+            <td>{{ pi.item.code }}</td>
+            <td>{{ pi.item.name }}</td>
+            <td class="text-end">{{ pi.qty }}</td>
+            <td class="text-end">Rp {{ pi.unit_price|floatformat:0 }}</td>
+            <td class="text-end">Rp {{ pi.subtotal|floatformat:0 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light fw-bold">
+          <tr><td colspan="4" class="text-end">Total</td><td class="text-end">Rp {{ po.total_amount|floatformat:0 }}</td></tr>
+        </tfoot>
+      </table>
+    </div></div>
+  </div>
+
+  <div class="tab-pane fade" id="tab-approvals">
+    <div class="card"><div class="card-body">
+      <table class="table"><thead><tr><th>Level</th><th>Role</th><th>Approver</th><th>Status</th><th>Catatan</th><th>Waktu</th></tr></thead>
+        <tbody>
+          {% for a in approvals %}
+          <tr>
+            <td>{{ a.level }}</td>
+            <td>{{ a.required_role }}</td>
+            <td>{{ a.approver|default:"–" }}</td>
+            <td>{% include "partials/status_badge.html" with status=a.status %}</td>
+            <td>{{ a.notes|default:"–" }}</td>
+            <td>{{ a.decided_at|date:"d M Y H:i"|default:"–" }}</td>
+          </tr>
+          {% empty %}<tr><td colspan="6" class="text-muted">Belum ada approval.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+
+  <div class="tab-pane fade" id="tab-history">
+    <div class="card"><div class="card-body">
+      <table class="table"><thead><tr><th>Waktu</th><th>Dari</th><th>Ke</th><th>Oleh</th><th>Catatan</th></tr></thead>
+        <tbody>
+          {% for log in audit_logs %}
+          <tr>
+            <td>{{ log.created_at|date:"d M Y H:i" }}</td>
+            <td><code>{{ log.from_status|default:"–" }}</code></td>
+            <td><code>{{ log.to_status }}</code></td>
+            <td>{{ log.user|default:"–" }}</td>
+            <td>{{ log.note|default:"–" }}</td>
+          </tr>
+          {% empty %}<tr><td colspan="5" class="text-muted">Belum ada riwayat.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div></div>
+  </div>
+
+  <div class="tab-pane fade" id="tab-receipts">
+    <div class="card"><div class="card-body">
+      {% for gr in po.receipts.all %}
+      <div class="mb-2">
+        <strong><a href="{% url 'gr_detail' gr.pk %}">{{ gr.number }}</a></strong>
+        – Surat Jalan: {{ gr.delivery_note_no }} – {{ gr.received_date }}
+      </div>
+      {% empty %}
+      <p class="text-muted">Belum ada penerimaan barang.</p>
+      {% endfor %}
+    </div></div>
+  </div>
+</div>
+
+<!-- Approve Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <form method="post" action="{% url 'po_approve' po.pk %}">
+      {% csrf_token %}
+      <div class="modal-header"><h5 class="modal-title">Setujui PO</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body"><textarea name="note" class="form-control" rows="3" placeholder="Catatan…"></textarea></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-success">Setujui</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <form method="post" action="{% url 'po_reject' po.pk %}">
+      {% csrf_token %}
+      <div class="modal-header"><h5 class="modal-title">Tolak PO</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body"><textarea name="reason" class="form-control" rows="3" placeholder="Alasan penolakan…" required></textarea></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-danger">Tolak</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Resubmit Modal -->
+<div class="modal fade" id="resubmitModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <form method="post" action="{% url 'po_resubmit' po.pk %}">
+      {% csrf_token %}
+      <div class="modal-header"><h5 class="modal-title">Ajukan Ulang PO</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body"><textarea name="note" class="form-control" rows="3" placeholder="Keterangan revisi…"></textarea></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+        <button type="submit" class="btn btn-warning">Ajukan Ulang</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+
+<!-- Cancel Modal -->
+<div class="modal fade" id="cancelModal" tabindex="-1">
+  <div class="modal-dialog"><div class="modal-content">
+    <form method="post" action="{% url 'po_cancel' po.pk %}">
+      {% csrf_token %}
+      <div class="modal-header"><h5 class="modal-title">Batalkan PO</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-body">
+        <p>Batalkan PO <strong>{{ po.number }}</strong>?</p>
+        <textarea name="reason" class="form-control" rows="2" placeholder="Alasan pembatalan (opsional)"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kembali</button>
+        <button type="submit" class="btn btn-danger">Ya, Batalkan</button>
+      </div>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

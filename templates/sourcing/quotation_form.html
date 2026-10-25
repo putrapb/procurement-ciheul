@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load core_tags %}
+{% block title %}Input Penawaran – Procurement{% endblock %}
+{% block content %}
+<h1 class="h4 mb-4">Input Penawaran – {{ rfq_vendor.vendor }} / {{ rfq.number }}</h1>
+
+<div class="card mb-3" style="max-width:700px;">
+  <div class="card-body">
+    <h6 class="fw-bold mb-2"><i class="bi bi-stars me-1"></i>Ekstrak dari Dokumen (opsional)</h6>
+    <p class="small text-muted mb-2">
+      Unggah PDF/gambar penawaran. AI hanya mengisi form; tidak menyimpan data otomatis.
+      Jika AI tidak tersedia, isi harga secara manual.
+    </p>
+    <form method="post" enctype="multipart/form-data" class="d-flex gap-2 flex-wrap">
+      {% csrf_token %}
+      <input type="file" name="ai_file" class="form-control form-control-sm"
+             accept="application/pdf,image/*" required style="max-width:360px;">
+      <button type="submit" name="action" value="extract" class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-magic me-1"></i>Ekstrak dengan AI
+      </button>
+    </form>
+    {% if ai_result %}
+    <div class="alert {% if ai_result.error %}alert-warning{% else %}alert-info{% endif %} mt-3 mb-0 py-2 small">
+      {{ ai_result.message }}
+      {% if ai_result.items %}
+      <ul class="mb-0 mt-1">
+        {% for item in ai_result.items %}
+        <li>{{ item.item_name }}{% if item.qty %} – qty {{ item.qty }}{% endif %}{% if item.unit_price %} – Rp {{ item.unit_price }}{% endif %}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card" style="max-width:700px;">
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Lead Time (hari)</label>
+          <input type="number" name="lead_time_days" class="form-control" min="0"
+                 value="{% if ai_result %}{{ ai_result.lead_time_days|default_if_none:existing.lead_time_days|default:0 }}{% else %}{{ existing.lead_time_days|default:0 }}{% endif %}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Berlaku Hingga</label>
+          <input type="date" name="valid_until" class="form-control"
+                 value="{% if ai_result and ai_result.valid_until %}{{ ai_result.valid_until|date:'Y-m-d' }}{% else %}{{ existing.valid_until|date:'Y-m-d'|default:'' }}{% endif %}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Syarat Bayar</label>
+          <input type="text" name="terms" class="form-control"
+                 value="{% if ai_result and ai_result.terms %}{{ ai_result.terms }}{% else %}{{ existing.terms|default:'' }}{% endif %}" placeholder="mis. Net 30">
+        </div>
+      </div>
+
+      <h6 class="fw-bold mb-2">Harga per Item</h6>
+      <table class="table table-bordered">
+        <thead class="table-light"><tr><th>Item</th><th>Satuan</th><th>Qty PR</th><th>Harga Satuan (Rp)</th></tr></thead>
+        <tbody>
+          {% for pri in pr_items %}
+          <tr>
+            <td>{{ pri.item.code }} – {{ pri.item.name }}</td>
+            <td>{{ pri.item.uom }}</td>
+            <td class="text-end">{{ pri.qty }}</td>
+            <td>
+              <input type="number" name="price_{{ pri.pk }}" class="form-control form-control-sm"
+                     min="0" step="0.01" placeholder="0"
+                     value="{% if ai_result %}{{ ai_prices|get_item:pri.pk|default_if_none:'' }}{% elif existing %}{% for qi in existing.items.all %}{% if qi.pr_item_id == pri.pk %}{{ qi.unit_price }}{% endif %}{% endfor %}{% endif %}">
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Lampiran Penawaran</label>
+        <input type="file" name="attachment" class="form-control" accept="application/pdf,image/*">
+        {% if existing.attachment %}
+        <div class="form-text">
+          Lampiran saat ini: <a href="{{ existing.attachment.url }}" target="_blank" rel="noopener">unduh</a>
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" name="action" value="save" class="btn btn-primary">Simpan Penawaran</button>
+        <a href="{% url 'rfq_detail' rfq.pk %}" class="btn btn-outline-secondary">Batal</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
