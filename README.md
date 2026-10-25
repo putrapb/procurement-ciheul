@@ -20,3 +20,6 @@ Akun demo: `admin/admin123`, serta `requester|depthead|officer|manager|warehouse
 
 ## Dokumen
 `PRD.md` | `SRS.md` | `Architect.md` | `Design.md` | `CLAUDE.md` / `AGENTS.md` | `law.bend`
+
+- BPMN swimlane: `docs/BPMN.pdf` (sumber: `docs/BPMN.md`)
+- WBS: `docs/WBS.xlsx` (sumber: `docs/WBS.md`, ekspor: `docs/WBS.csv`)

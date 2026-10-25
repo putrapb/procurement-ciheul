@@ -1,0 +1,122 @@
+# WBS - Aplikasi Procurement
+
+Versi: 1.0 | Rujukan: `PRD.md` (F-xx), `SRS.md` (FR-xxx), `docs/BPMN.md`
+
+## 1. Struktur WBS
+
+```text
+1. Manajemen Proyek & Persyaratan
+2. Fondasi Aplikasi
+3. Master Data
+4. Purchase Request & Approval
+5. Sourcing: RFQ, Quotation, Vendor Selection
+6. Purchase Order
+7. Goods Receipt
+8. Lintas Fungsi: Dashboard, Pencarian, UI, Audit
+9. QA, Gate, dan Delivery
+```
+
+## 2. Tabel WBS
+
+| WBS ID | Level | Modul | Fitur / Pekerjaan | Role utama | Prioritas | Traceability | BPMN task | Status |
+|---|---|---|---|---|---|---|---|---|
+| 1.0 | 1 | Manajemen Proyek & Persyaratan | Perencanaan, dokumentasi, dan kontrol proyek | Semua | P0 | PRD §1-§10 | Semua lane | Selesai |
+| 1.1 | 2 | Manajemen Proyek & Persyaratan | PRD, SRS, arsitektur, desain, BPMN, WBS | Semua | P0 | PRD, SRS, Architect.md, Design.md | - | Selesai |
+| 1.2 | 2 | Manajemen Proyek & Persyaratan | Quality gate dan audit kepatuhan `law.bend` | Semua | P0 | L001-L051 | - | Selesai |
+| 1.3 | 2 | Manajemen Proyek & Persyaratan | Setup proyek, dependensi, dan konfigurasi environment | Admin | P0 | NFR-05, NFR-09 | - | Selesai |
+| 2.0 | 1 | Fondasi Aplikasi | Fondasi teknis aplikasi | Sistem | P0 | Architect.md §3-§7 | Sistem | Selesai |
+| 2.1 | 2 | Fondasi Aplikasi | Django project, settings, SQLite/PostgreSQL, media | Sistem | P0 | NFR-05 | - | Selesai |
+| 2.2 | 2 | Fondasi Aplikasi | Model, constraint, index, dan migration | Sistem | P0 | Architect.md ERD, L030 | - | Selesai |
+| 2.3 | 2 | Fondasi Aplikasi | Login, logout, role-based access | Semua | P0 | F-01, FR-001-FR-003 | Semua lane | Selesai |
+| 2.4 | 2 | Fondasi Aplikasi | State machine terpusat + AuditLog atomik | Sistem | P0 | F-12, FR-060, L020, L022 | Sistem: validasi & audit | Selesai |
+| 2.5 | 2 | Fondasi Aplikasi | Penomoran otomatis PR/RFQ/PO/GR | Sistem | P0 | FR-020, FR-030, FR-040 | - | Selesai |
+| 2.6 | 2 | Fondasi Aplikasi | Seed data, akun demo, dan data contoh | Admin | P0 | NFR-09 | Admin | Selesai |
+| 3.0 | 1 | Master Data | Pengelolaan data referensi | Admin | P0 | F-02 | Admin | Selesai |
+| 3.1 | 2 | Master Data | CRUD department | Admin | P0 | FR-010 | Admin: master data | Selesai |
+| 3.2 | 2 | Master Data | CRUD item (kode unik, nama, satuan) | Admin | P0 | FR-010 | Admin: master data | Selesai |
+| 3.3 | 2 | Master Data | CRUD vendor (kode unik, kontak, email, telepon) | Admin | P0 | FR-010 | Admin: master data | Selesai |
+| 3.4 | 2 | Master Data | Pengelolaan user dan role | Admin | P0 | F-01, F-02 | Admin: master data | Selesai |
+| 3.5 | 2 | Master Data | Nonaktifkan data terpakai (`is_active=False`) | Admin | P0 | FR-011 | - | Selesai |
+| 4.0 | 1 | Purchase Request & Approval | Siklus PR dari draft sampai siap sourcing | Requester, Dept Head, Officer | P0 | F-03, F-04, F-05 | Requester, Dept Head, Officer | Selesai |
+| 4.1 | 2 | Purchase Request & Approval | Buat PR multi-item (item, qty > 0, catatan) | Requester | P0 | FR-020 | Requester: buat PR | Selesai |
+| 4.2 | 2 | Purchase Request & Approval | Edit/hapus PR selama `DRAFT` | Requester | P0 | FR-021 | Requester: revisi | Selesai |
+| 4.3 | 2 | Purchase Request & Approval | Submit PR + buat approval Dept Head | Requester, Sistem | P0 | FR-022 | Requester: submit | Selesai |
+| 4.4 | 2 | Purchase Request & Approval | Approve PR oleh Dept Head | Dept Head | P0 | FR-023, BR-01 | Dept Head: approve | Selesai |
+| 4.5 | 2 | Purchase Request & Approval | Reject PR + alasan dan revisi ke `DRAFT` | Dept Head, Requester | P0 | FR-023, FR-024 | Dept Head: reject; Requester: revisi | Selesai |
+| 4.6 | 2 | Purchase Request & Approval | Batalkan PR sesuai role dan state machine | Requester/Officer/Manager/Admin | P1 | BR-06, state machine | Requester: batalkan | Selesai |
+| 4.7 | 2 | Purchase Request & Approval | Pembatasan akses PR per role dan departemen | Semua | P0 | FR-003, FR-023 | Semua lane | Selesai |
+| 4.8 | 2 | Purchase Request & Approval | Daftar PR: filter, pencarian, pagination, detail | Semua | P1 | F-13, F-15, FR-061-FR-062 | Sistem: dashboard | Selesai |
+| 5.0 | 1 | Sourcing | RFQ, quotation, perbandingan, dan pemilihan vendor | Officer, Manager, Vendor | P0 | F-06, F-07, F-08, F-09 | Officer, Vendor, Manager | Selesai |
+| 5.1 | 2 | Sourcing | Buat RFQ dari PR `APPROVED`, pilih >= 1 vendor | Officer | P0 | FR-025, FR-030 | Officer: buat RFQ | Selesai |
+| 5.2 | 2 | Sourcing | Kirim/tutup RFQ (`SENT`, `CLOSED`) | Officer | P0 | FR-031 | Officer: kirim RFQ | Selesai |
+| 5.3 | 2 | Sourcing | Input quotation per vendor dan per item | Officer | P0 | FR-032 | Officer: input quotation | Selesai |
+| 5.4 | 2 | Sourcing | Lampiran file penawaran (PDF/gambar) | Officer | P1 | FR-032 | Officer: input quotation | Selesai |
+| 5.5 | 2 | Sourcing | AI extractor penawaran (opsional) sebagai prefill form | Officer | P2 | F-16, FR-070-FR-072 | Officer: input quotation | Selesai |
+| 5.6 | 2 | Sourcing | Tabel perbandingan harga per item dan total vendor | Officer, Manager | P0 | FR-033 | Officer: bandingkan | Selesai |
+| 5.7 | 2 | Sourcing | Pilih vendor + justifikasi jika bukan harga terendah | Officer | P0 | FR-034, BR-02 | Officer: pilih vendor | Selesai |
+| 5.8 | 2 | Sourcing | Revisi quotation setelah ditolak Manager | Officer | P0 | F-09, state machine | Officer: revisi quotation | Selesai |
+| 5.9 | 2 | Sourcing | Approval/reject vendor terpilih oleh Manager | Manager | P0 | FR-035, BR-01 | Manager: approval vendor | Selesai |
+| 6.0 | 1 | Purchase Order | Penerbitan, approval, pengiriman, dan cetak PO | Officer, Manager | P0 | F-09, F-10, F-14 | Officer, Manager | Selesai |
+| 6.1 | 2 | Purchase Order | Terbitkan PO dari quotation `APPROVED` dan RFQ `AWARDED` | Officer | P0 | FR-040, BR-03 | Officer: terbitkan PO | Selesai |
+| 6.2 | 2 | Purchase Order | Approval/reject PO oleh Manager | Manager | P0 | FR-041, FR-043 | Manager: approval PO | Selesai |
+| 6.3 | 2 | Purchase Order | Tandai PO terkirim ke vendor | Officer | P0 | FR-042 | Officer: kirim PO | Selesai |
+| 6.4 | 2 | Purchase Order | Cetak/print view PO | Officer | P1 | F-14, FR-042 | Officer: kirim PO | Selesai |
+| 6.5 | 2 | Purchase Order | Revisi/ajukan ulang atau batalkan PO | Officer, Manager | P1 | FR-043, BR-06 | Officer: revisi/batalkan PO | Selesai |
+| 6.6 | 2 | Purchase Order | Daftar/detail PO: filter, pencarian, pagination | Semua | P1 | F-15, FR-062 | Sistem: dashboard | Selesai |
+| 7.0 | 1 | Goods Receipt | Pencatatan penerimaan barang/jasa | Warehouse | P0 | F-11 | Warehouse | Selesai |
+| 7.1 | 2 | Goods Receipt | Buat GR untuk PO `SENT`/`PARTIALLY_RECEIVED` | Warehouse | P0 | FR-050 | Warehouse: buat GR | Selesai |
+| 7.2 | 2 | Goods Receipt | Dukungan penerimaan sebagian (partial receipt) | Warehouse | P0 | FR-052 | Warehouse: partial receipt | Selesai |
+| 7.3 | 2 | Goods Receipt | Validasi qty tidak melebihi sisa PO | Warehouse, Sistem | P0 | FR-051, BR-05 | Warehouse: validasi qty | Selesai |
+| 7.4 | 2 | Goods Receipt | Kondisi barang (OK/RUSAK) dan catatan | Warehouse | P0 | FR-050 | Warehouse: buat GR | Selesai |
+| 7.5 | 2 | Goods Receipt | Update status PO/PR menjadi `PARTIALLY_RECEIVED`/`COMPLETED` | Sistem | P0 | FR-052 | Warehouse: selesai | Selesai |
+| 7.6 | 2 | Goods Receipt | Daftar/detail GR | Warehouse | P1 | F-15 | Warehouse | Selesai |
+| 8.0 | 1 | Lintas Fungsi | Dashboard, UX, audit, dan pencarian | Semua | P1 | F-12, F-13, F-15 | Sistem | Selesai |
+| 8.1 | 2 | Lintas Fungsi | Dashboard ringkasan status dan antrean per role | Semua | P1 | FR-061 | Sistem: dashboard | Selesai |
+| 8.2 | 2 | Lintas Fungsi | Filter status, pencarian nomor, pagination 20/halaman | Semua | P1 | FR-062 | Sistem: dashboard | Selesai |
+| 8.3 | 2 | Lintas Fungsi | UI Bootstrap 5 + HTMX, responsif, badge status | Semua | P1 | Design.md | Semua lane | Selesai |
+| 8.4 | 2 | Lintas Fungsi | Tampilan riwayat audit pada detail dokumen | Semua | P0 | F-12, FR-060 | Sistem: audit | Selesai |
+| 8.5 | 2 | Lintas Fungsi | Pesan error domain dan feedback aksi | Semua | P1 | NFR-08 | Semua lane | Selesai |
+| 8.6 | 2 | Lintas Fungsi | Upload dan penyajian file media | Officer | P1 | FR-032 | Officer: input quotation | Selesai |
+| 9.0 | 1 | QA, Gate, dan Delivery | Pengujian, kepatuhan, dan dokumentasi | Semua | P0 | NFR-06-NFR-09 | - | Selesai |
+| 9.1 | 2 | QA, Gate, dan Delivery | Unit/service test aturan bisnis dan state machine | Semua | P0 | NFR-07, L033 | - | Selesai |
+| 9.2 | 2 | QA, Gate, dan Delivery | Integration test happy path, reject, partial receipt | Semua | P0 | PRD §9 | - | Selesai |
+| 9.3 | 2 | QA, Gate, dan Delivery | View/template smoke test dan regresi bug | Semua | P0 | NFR-07 | - | Selesai |
+| 9.4 | 2 | QA, Gate, dan Delivery | Menjalankan seluruh gate `law.bend` | Semua | P0 | L001-L051 | - | Selesai |
+| 9.5 | 2 | QA, Gate, dan Delivery | `ruff check`, `ruff format --check` | Semua | P1 | L035 | - | Selesai |
+| 9.6 | 2 | QA, Gate, dan Delivery | Cek migrasi dan `manage.py check` | Semua | P0 | L030 | - | Selesai |
+| 9.7 | 2 | QA, Gate, dan Delivery | README, seed demo, dan panduan menjalankan | Semua | P0 | NFR-09 | - | Selesai |
+
+## 3. Ringkasan modul
+
+| Modul | Jumlah fitur | Fitur utama |
+|---|---:|---|
+| Manajemen Proyek & Persyaratan | 3 | Dokumen, arsitektur, quality gate |
+| Fondasi Aplikasi | 6 | Auth/RBAC, state machine, audit, numbering |
+| Master Data | 5 | Department, item, vendor, user |
+| Purchase Request & Approval | 8 | PR, submit, approve/reject, revisi, cancel |
+| Sourcing | 9 | RFQ, quotation, AI, comparison, selection |
+| Purchase Order | 6 | PO, approval, send, print, cancel |
+| Goods Receipt | 6 | GR, partial, over-receipt guard, completion |
+| Lintas Fungsi | 6 | Dashboard, search, UI, audit, media |
+| QA, Gate, dan Delivery | 7 | Test, lint, migration, law gates, docs |
+
+## 4. Traceability fitur PRD ke WBS
+
+| Fitur PRD | Nama fitur | WBS |
+|---|---|---|
+| F-01 | Login, logout, RBAC | 2.3, 3.4 |
+| F-02 | CRUD master data | 3.1-3.5 |
+| F-03 | Buat/edit/submit PR | 4.1-4.3 |
+| F-04 | Approve/reject PR | 4.4-4.5 |
+| F-05 | Review PR & sourcing | 4.7, 5.1 |
+| F-06 | Buat RFQ | 5.1-5.2 |
+| F-07 | Input penawaran | 5.3-5.5 |
+| F-08 | Perbandingan & pilih vendor | 5.6-5.7 |
+| F-09 | Approve vendor & PO | 5.9, 6.2 |
+| F-10 | Terbit PO | 6.1 |
+| F-11 | Goods Receipt | 7.1-7.6 |
+| F-12 | Audit log | 2.4, 8.4 |
+| F-13 | Dashboard | 8.1 |
+| F-14 | Cetak PO | 6.4 |
+| F-15 | Filter, search, pagination | 8.2 |
+| F-16 | AI extractor | 5.5 |
